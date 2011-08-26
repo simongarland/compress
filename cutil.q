@@ -1,3 +1,4 @@
+/ 2011.09.26 - handle nested column #_file correctly 
 / see https://code.kx.com/trac/wiki/Cookbook/FileCompression
 td:`:/Volumes/Stuff/tmp
 td:`:/tmp
@@ -64,7 +65,9 @@ cusege:{[info] / good enough..
 	:LASTINFO::update lvl:9 from r where rw,ec<60}
 
 cvalidate:{[info] / make sure the compression worked
-	:LASTINFO::update ok:{$[hcount[x]~hcount y;$[(read1(x;0;4000))~read1(y;0;4000);(get x)~get y;0b];0b]}'[sf;tf]from info where ac>0,rw,not ok}
+    r:update ok:{$[hcount[x]~hcount y;$[(read1(x;0;4000))~read1(y;0;4000);(get x)~get y;0b];0b]}'[sf;tf]from info where ac>0,rw,not ok,not sf like"*#";
+    / if get x has worked, then x# has been used too, so:
+    :LASTINFO::update ok:1b from r where sf in exec{`$(string x),"#"}each sf from r where ok}
 
 cokmv:{[info] / all validated before the mv?
 	exec all ok from info where ac>0,rw}
