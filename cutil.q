@@ -43,7 +43,7 @@ cinfo:{[d;td;p;t] dpt:.Q.par[d;p;t]; tdpt:.Q.par[td;p;t]; c:(key dpt)except`.d;
 
 ctotal:{[info] 
     / exec ucl wavg ec,ucl wavg ac,sum cl,sum ucl,sum time from info}
-0!select ucl wavg ec,ucl wavg ac,sum cl,sum ucl,sum time by ptn,tbl,algo,lvl from info}
+    0!select ucl wavg ec,ucl wavg ac,sum cl,sum ucl,sum time by ptn,tbl,algo,lvl from info}
 
 cwrite:{[info]
     if[not all exec(blksz within 12 20)and((algo in 0 1)and lvl=0)or(algo=2)and lvl within 1 9 from info where rw;'"invalid blksz/algo/lvl"];
