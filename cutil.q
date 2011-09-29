@@ -26,6 +26,8 @@ d:`:/Volumes/Stuff/NYSETAQ.2003/taq; p:2003.09.10
 
 / LASTINFO - last changed copy of <info>, kept around as building it can be very expensive (cwrite/cvalidate)
 
+\g 1 
+
 n21:{[f;k;dv]$[count v:(-21!f)k;v;dv]}
 n21cl:n21[;`compressedLength;0j]
 n21ucl:n21[;`uncompressedLength;0j]
@@ -35,11 +37,12 @@ n21lbs:n21[;`logicalBlockSize;0N]
 / cinfo:: d - db directory; td - target db directory (ideally on a different physical drive); p - partition; t - tablename
 cinfo:{[d;td;p;t] dpt:.Q.par[d;p;t]; tdpt:.Q.par[td;p;t]; c:(key dpt)except`.d; 
     r:([]sf:(` sv)each(dpt,)each c;tf:(` sv)each(tdpt,)each c);
-    r:update ptn:p,tbl:t,name:c,cl:n21cl each sf,ucl:n21ucl each sf,algo:n21a each sf,blksz:n21lbs each sf from r;
+    r:update ptn:p,tbl:t,name:c,rname:c,id:-1,cl:n21cl each sf,ucl:n21ucl each sf,algo:n21a each sf,blksz:n21lbs each sf from r;
     r:update ucl:hcount each sf from r where ucl=0; r:update cl:ucl from r where cl=0;
     r:update ec:ac from update time:`time$0,lvl:0N,ok:1b,rw:0b,ac:100*1-cl%ucl from r;
+    r:update rname:{`$-1_x}each string name from r where name like"*#"; / root name from name, xxx from xxx#
     r:update rw:1b,ec:{max 1,100*1-(count -18!v)%count -8!v:read1(x;0;500000)}each sf from r where ac=0;
-    :LASTINFO::`ptn`tbl`name`ok`rw`ac`ec`time`cl`ucl`algo`blksz`lvl xcols r} 
+    :LASTINFO::`ptn`tbl`name`rname`ok`rw`ac`ec`id`time`cl`ucl`algo`blksz`lvl xcols r} 
 
 ctotal:{[info] 
     / exec ucl wavg ec,ucl wavg ac,sum cl,sum ucl,sum time from info}
@@ -51,7 +54,10 @@ cwrite:{[info]
     :LASTINFO::delete tmp from update cl:n21cl each tf,time:first each tmp,ac:last each tmp from r where rw}
 
 cuse:{[info;blksZ;algO;lvL] / update the -19! parameters to be used where rw=1b
-    :LASTINFO::update blksz:blksZ,algo:algO,lvl:lvL from info where rw}
+    / make sure matching pairs of xxx & xxx# within ptn/tbl
+    r:update id:{x?x:flip x}(ptn;tbl;rname) from info;
+    r:update rw:1b from r where id in exec id from r where rw;
+    :LASTINFO::update blksz:blksZ,algo:algO,lvl:lvL from r where rw}
 cusegzl:cuse[;17;2;] / 128K, gzip
 cusegz:cusegz6:cusegzl[;6] / gzip, level=6, ZFS default
 cusegz1:cusegzl[;1] / gzip, level=1, surprisingly good
@@ -59,13 +65,14 @@ cusegz9:cusegzl[;9] / gzip, level=9, maximum
 cuselogfile:cuse[;20;2;9] / biggest blocksize, gzip, level=9, maximum
 cusekx:cuse[;17;1;0] / 128K, kx
 
-cusege:{[info] / good enough..
-    r:update algo:1,lvl:0,blksz:17 from info where rw;
-    r:update algo:2,lvl:6 from r where rw,ec<90;
-    :LASTINFO::update lvl:9 from r where rw,ec<60}
+conlymv:{[pct;info] 
+    / only mv those columns which have >pct% compression
+    :LASTINFO::update rw:ac>pct from info where rw}
+conlymv65:conlymv 65
 
-cvalidate:{[info] / make sure the compression worked
-    :LASTINFO::update ok:{$[hcount[x]~hcount y;$[(read1(x;0;4000))~read1(y;0;4000);(read1 x)~read1 y;0b];0b]}'[sf;tf]from info where ac>0,rw,not ok}
+cvalidate:{[info] / make sure the compression worked, only set ok those that did compress
+    r:update ok:{$[hcount[x]~hcount y;$[(read1(x;0;4000))~read1(y;0;4000);(get x)~get y;0b];0b]}'[sf;tf]from info where ac>0,rw,name=rname,not ok;
+    :LASTINFO::update ok:1b from r where ac>0,rw,name<>rname,id in exec id from r where ok}
 
 cokmv:{[info] / all validated before the mv?
     exec all ok from info where ac>0,rw}
@@ -80,7 +87,7 @@ cmv:{[info] / mv the files (\r isn't as flexible at moving across filesystems)
     r}
 
 / reload results if saved as a csv 
-loadcsv:0:[("DSSBBEETJJHHHSS";enlist",")]
+loadcsv:0:[("DSSSBBEEHTJJHHHSS";enlist",")]
 
 \
 sample session:
@@ -91,7 +98,9 @@ info:cwrite info / do the compression
 info / inspect results, perhaps rack up the level for some columns and rewrite 
 cmv info:cvalidate info / make sure all ok, then mv 
 or:
-cmv cvalidate cwrite cusegz6 cinfo[d;td;p;t]
+cmv conlymv65 info:cvalidate info / make sure ok, then move all with >75% compression only 
+or:
+cmv conlymv65 cvalidate cwrite cusegz6 cinfo[d;td;p;t]
 ====
 save`:info.csv
 .. another session ..
