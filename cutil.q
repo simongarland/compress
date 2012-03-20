@@ -42,8 +42,8 @@ cinfo:{[d;td;p;t] dpt:.Q.par[d;p;t]; tdpt:.Q.par[td;p;t]; c:(key dpt)except`.d;
     r:update ucl:hcount each sf from r where ucl=0; r:update cl:ucl from r where cl=0;
     r:update ec:ac from update time:`time$0,lvl:0N,ok:1b,rw:0b,ac:100*1-cl%ucl from r;
     r:update rname:{`$-1_x}each string name from r where name like"*#"; / root name from name, xxx from xxx#
+    r:update id:{x?x:flip x}(ptn;tbl;rname) from r;
     r:update rw:1b,ec:{max 1,100*1-(count -18!v)%count -8!v:read1(x;0;500000)}each sf from r where ac=0;
-    r:delete from r where name like"*#"; / xxx# handled automatically in 2.8
     :LASTINFO::`ptn`tbl`name`rname`ok`rw`ac`ec`id`time`cl`ucl`algo`blksz`lvl xcols r} 
 
 ctotal:{[info] 
@@ -52,14 +52,13 @@ ctotal:{[info]
 
 cwrite:{[info]
     if[not all exec(blksz within 12 20)and((algo in 0 1)and lvl=0)or(algo=2)and lvl within 1 9 from info where rw;'"invalid blksz/algo/lvl"];
-    r:update ok:0b,tmp:{[sf;tf;b;a;l] t:.z.t;r:(.z.t-t;-19!(sf;tf;b;a;l));-1(string first r)," ",1_string tf;r}'[sf;tf;blksz;algo;lvl]from info where rw;
-    /:LASTINFO::delete tmp from update cl:n21cl each tf,time:first each tmp,ac:last each tmp from r where rw} / pre 2.8
-    :LASTINFO::delete tmp from update cl:n21cl each tf,time:first each tmp,ac:n21pct each last each tmp from r where rw}
+    r:update tmp:{[sf;tf;b;a;l] t:.z.t;r:(.z.t-t;-19!(sf;tf;b;a;l));-1(string first r)," ",1_string tf;r}'[sf;tf;blksz;algo;lvl]from info where rw,name=rname;
+    r:update time:first each tmp from r where rw,name=rname;
+    :LASTINFO::delete tmp from update ok:0b,cl:n21cl each tf,ac:n21pct each tf from r where rw}
 
 cuse:{[info;blksZ;algO;lvL] / update the -19! parameters to be used where rw=1b
     / make sure matching pairs of xxx & xxx# within ptn/tbl
-    r:update id:{x?x:flip x}(ptn;tbl;rname) from info;
-    r:update rw:1b from r where id in exec id from r where rw;
+    r:update rw:1b from info where id in exec id from info where rw;
     :LASTINFO::update blksz:blksZ,algo:algO,lvl:lvL from r where rw}
 cusegzl:cuse[;17;2;] / 128K, gzip
 cusegz:cusegz6:cusegzl[;6] / gzip, level=6, ZFS default
