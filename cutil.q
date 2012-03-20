@@ -31,6 +31,7 @@ d:`:/Volumes/Stuff/NYSETAQ.2003/taq; p:2003.09.10
 n21:{[f;k;dv]$[count v:(-21!f)k;v;dv]}
 n21cl:n21[;`compressedLength;0j]
 n21ucl:n21[;`uncompressedLength;0j]
+n21pct:{100*1-(%/)n21[x;`compressedLength`uncompressedLength;0 0j]}
 n21a:n21[;`algorithm;0N]
 n21lbs:n21[;`logicalBlockSize;0N]
 
@@ -51,7 +52,8 @@ ctotal:{[info]
 cwrite:{[info]
     if[not all exec(blksz within 12 20)and((algo in 0 1)and lvl=0)or(algo=2)and lvl within 1 9 from info where rw;'"invalid blksz/algo/lvl"];
     r:update ok:0b,tmp:{[sf;tf;b;a;l] t:.z.t;r:(.z.t-t;-19!(sf;tf;b;a;l));-1(string first r)," ",1_string tf;r}'[sf;tf;blksz;algo;lvl]from info where rw;
-    :LASTINFO::delete tmp from update cl:n21cl each tf,time:first each tmp,ac:last each tmp from r where rw}
+    /:LASTINFO::delete tmp from update cl:n21cl each tf,time:first each tmp,ac:last each tmp from r where rw} / pre 2.8
+    :LASTINFO::delete tmp from update cl:n21cl each tf,time:first each tmp,ac:n21pct each last each tmp from r where rw}
 
 cuse:{[info;blksZ;algO;lvL] / update the -19! parameters to be used where rw=1b
     / make sure matching pairs of xxx & xxx# within ptn/tbl
@@ -71,7 +73,8 @@ conlymv:{[pct;info]
 conlymv65:conlymv 65
 
 cvalidate:{[info] / make sure the compression worked, only set ok those that did compress
-    r:update ok:{$[hcount[x]~hcount y;$[(read1(x;0;4000))~read1(y;0;4000);(get x)~get y;0b];0b]}'[sf;tf]from info where ac>0,rw,name=rname,not ok;
+    /r:update ok:{$[hcount[x]~hcount y;$[(read1(x;0;4000))~read1(y;0;4000);(get x)~get y;0b];0b]}'[sf;tf]from info where ac>0,rw,name=rname,not ok;
+    r:update ok:{$[hcount[x]~hcount y;(get x)~get y;0b]}'[sf;tf]from info where ac>0,rw,name=rname,not ok;
     :LASTINFO::update ok:1b from r where ac>0,rw,name<>rname,id in exec id from r where ok}
 
 cokmv:{[info] / all validated before the mv?
