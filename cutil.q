@@ -43,6 +43,7 @@ cinfo:{[d;td;p;t] dpt:.Q.par[d;p;t]; tdpt:.Q.par[td;p;t]; c:(key dpt)except`.d;
     r:update ec:ac from update time:`time$0,lvl:0N,ok:1b,rw:0b,ac:100*1-cl%ucl from r;
     r:update rname:{`$-1_x}each string name from r where name like"*#"; / root name from name, xxx from xxx#
     r:update rw:1b,ec:{max 1,100*1-(count -18!v)%count -8!v:read1(x;0;500000)}each sf from r where ac=0;
+    r:delete from r where name like"*#"; / xxx# handled automatically in 2.8
     :LASTINFO::`ptn`tbl`name`rname`ok`rw`ac`ec`id`time`cl`ucl`algo`blksz`lvl xcols r} 
 
 ctotal:{[info] 
